@@ -11,16 +11,16 @@ import (
 
 // Time computes the current time based on my format
 func Time() string {
-	time.Layout = "Mon Jan _2 2006 3:04:05 PM MST"
+	layout := "Mon Jan _2 2006 3:04:05 PM MST"
 	now := time.Now()
-	return now.Format(time.Layout)
+	return now.Format(layout)
 }
 
 // Task object - details regarding a task
 type Task struct {
 	Id          int    `json:"id"`
 	Description string `json:"description"`
-	Status      string `json:"status"`
+	Status      Status `json:"status"`
 	CreatedAt   string `json:"createdAt"`
 	UpdatedAt   string `json:"updatedAt"`
 }
@@ -74,7 +74,7 @@ func readTask() ([]Task, error) {
 		return []Task{}, nil
 	}
 	var task []Task
-	err := json.Unmarshal(f, &task)
+	err = json.Unmarshal(f, &task)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
@@ -93,6 +93,7 @@ func writeTask(task []Task) error {
 	if err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
+	return nil
 }
 
 func CreateTask(description string) {
