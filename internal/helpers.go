@@ -30,7 +30,7 @@ type Task struct {
 type Status string
 
 const (
-	unknown    status = ""
+	unknown    Status = ""
 	Todo       Status = "todo"
 	InProgress Status = "in progress"
 	Done       Status = "done"
@@ -42,7 +42,7 @@ func getNextId(tasks []Task) int {
 	maxId := 0
 	for _, task := range tasks {
 		if task.Id > maxId {
-			task.Id = maxId
+			maxId = task.Id
 		}
 	}
 	return maxId + 1
@@ -99,11 +99,11 @@ func writeTask(task []Task) error {
 	return nil
 }
 
-//CreateTask creates a task with description provided
+// CreateTask creates a task with description provided
 func CreateTask(description string) {
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks : %w \n", err)
+		fmt.Printf("Error reading tasks : %v \n", err)
 	}
 	Id := getNextId(tasks)
 	newTask := Task{
@@ -116,7 +116,7 @@ func CreateTask(description string) {
 	tasks = append(tasks, newTask)
 	err = writeTask(tasks)
 	if err != nil {
-		fmt.Printf("Error saving task %w", err)
+		fmt.Printf("Error saving task %v", err)
 	}
 	fmt.Printf("Task created successfully (Id : %v ) \n", newTask.Id)
 }
@@ -125,7 +125,7 @@ func CreateTask(description string) {
 func UpdateTask(Id int, description string, status Status) {
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks: %w\n", err)
+		fmt.Printf("Error reading tasks: %v\n", err)
 	}
 	if len(tasks) == 0 {
 		// todo
@@ -152,17 +152,16 @@ func UpdateTask(Id int, description string, status Status) {
 	}
 	err = writeTask(tasks)
 	if err != nil {
-		fmt.Printf("Failed to write task %w", err)
+		fmt.Printf("Failed to write task %v", err)
 	}
 	fmt.Println("Task updated successfully ")
-	return nil
 }
 
 // DeleteTask deletes a task by its id
 func DeleteTask(Id int) {
-	tasks, err != readTask()
+	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks %w\n", err)
+		fmt.Printf("Error reading tasks %v\n", err)
 	}
 	if Id == 0 {
 		fmt.Printf("Task id needs to be provided to update task\n")
@@ -178,7 +177,7 @@ func DeleteTask(Id int) {
 	fmt.Printf("No tasks with task id %d \n", Id)
 	err = writeTask(tasks)
 	if err != nil {
-		fmt.Printf("Error Updating task memory base %w\n", err)
+		fmt.Printf("Error Updating task memory base %v\n", err)
 	}
 }
 
@@ -186,7 +185,7 @@ func DeleteTask(Id int) {
 func ListTasks(status Status) []Task {
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading Tasks %w\n", err)
+		fmt.Printf("Error reading Tasks %v\n", err)
 	}
 	if len(tasks) == 0 {
 		// todo
