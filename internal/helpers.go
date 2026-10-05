@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"text/tabwriter"
 	"time"
 )
 
@@ -28,6 +30,7 @@ type Task struct {
 type Status string
 
 const (
+	unknown    status = ""
 	Todo       Status = "todo"
 	InProgress Status = "in progress"
 	Done       Status = "done"
@@ -87,7 +90,7 @@ func writeTask(task []Task) error {
 	}
 	data, err := json.MarshalIndent(task, "", "  ")
 	if err != nil {
-		fmt.Errorf("failed to format JSON: %w", err)
+		return fmt.Errorf("failed to format JSON: %w", err)
 	}
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
@@ -96,10 +99,11 @@ func writeTask(task []Task) error {
 	return nil
 }
 
+//CreateTask creates a task with description provided
 func CreateTask(description string) {
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Errorf("failed to read tasks: %w", err)
+		fmt.Printf("Error reading tasks : %w \n", err)
 	}
 	Id := getNextId(tasks)
 	newTask := Task{
@@ -112,16 +116,109 @@ func CreateTask(description string) {
 	tasks = append(tasks, newTask)
 	err = writeTask(tasks)
 	if err != nil {
-		fmt.Errorf("Error saving task %w", err)
+		fmt.Printf("Error saving task %w", err)
 	}
-	fmt.Printf("Task created successfully with Id : %v", newTask.Id)
+	fmt.Printf("Task created successfully (Id : %v ) \n", newTask.Id)
 }
-func UpdateTask() {}
 
-func DeleteTask() {}
+// UpdateTask updates a tasks description or status or both by id
+func UpdateTask(Id int, description string, status Status) {
+	tasks, err := readTask()
+	if err != nil {
+		fmt.Printf("Error reading tasks: %w\n", err)
+	}
+	if len(tasks) == 0 {
+		// todo
+		// show how to create tasks in print statement
+		fmt.Printf("No tasks to Update\n")
+	}
+	if Id == 0 {
+		fmt.Printf("Task id needs to be provided to update task\n")
+	}
+	if description == "" && status == unknown {
+		fmt.Printf("At least description or status must be provided to update task \n")
+	}
+	for _, task := range tasks {
+		if task.Id == Id {
+			if description != "" {
+				task.Description = description
+			}
+			if status != unknown {
+				task.Status = status
+			}
+			task.UpdatedAt = Time()
+			break
+		}
+	}
+	err = writeTask(tasks)
+	if err != nil {
+		fmt.Printf("Failed to write task %w", err)
+	}
+	fmt.Println("Task updated successfully ")
+	return nil
+}
 
-func GetTaskById(id int) Task {}
+// DeleteTask deletes a task by its id
+func DeleteTask(Id int) {
+	tasks, err != readTask()
+	if err != nil {
+		fmt.Printf("Error reading tasks %w\n", err)
+	}
+	if Id == 0 {
+		fmt.Printf("Task id needs to be provided to update task\n")
+	}
+	for i, task := range tasks {
+		if task.Id == Id {
+			// Delete elements from index i up to i+1 excluding i+1
+			tasks = slices.Delete(tasks, i, i+1)
+			fmt.Printf("Task by Id: %d Deleted successfully \n", Id)
+			break
+		}
+	}
+	fmt.Printf("No tasks with task id %d \n", Id)
+	err = writeTask(tasks)
+	if err != nil {
+		fmt.Printf("Error Updating task memory base %w\n", err)
+	}
+}
 
-func GetTaskByStatus(status Status) Task {}
+// ListTasks lists tasks by their status , if status is not provided it Lists all tasks
+func ListTasks(status Status) []Task {
+	tasks, err := readTask()
+	if err != nil {
+		fmt.Printf("Error reading Tasks %w\n", err)
+	}
+	if len(tasks) == 0 {
+		// todo
+		// show how to create tasks in print statement
+		fmt.Printf("No tasks to Update\n")
+	}
+	if status == unknown {
+		return tasks
+	}
+	var taskList []Task
+	for _, task := range tasks {
+		if task.Status == status {
+			taskList = append(taskList, task)
+		}
+	}
+	return taskList
+}
 
-func ListTasks() []Task {}
+// FormatTask formats the tasks listed in a slice and prints to the terminal
+func FormatTask(tasks []Task) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+
+	fmt.Fprintln(w, "      TASK         ")
+	fmt.Fprintln(w, "-------------------")
+	// column headers
+	fmt.Fprintln(w, "Id\tDescription\tStatus\tCreatedAt\tUpdatedAt\t")
+	fmt.Fprintln(w, "--\t-----------\t------\t---------\t---------\t")
+
+	//data rows
+	for _, task := range tasks {
+		s := fmt.Sprintf("%d\t%s\t%s\t%s\t%s\t", task.Id, task.Description, task.Status, task.CreatedAt, task.UpdatedAt)
+		fmt.Fprintln(w, s)
+	}
+	w.Flush()
+}
