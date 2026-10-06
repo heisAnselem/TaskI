@@ -3,10 +3,12 @@ package internal
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"text/tabwriter"
 	"time"
 )
@@ -20,21 +22,43 @@ func Time() string {
 
 // Task object - details regarding a task
 type Task struct {
-	Id          int    `json:"id"`
-	Description string `json:"description"`
-	Status      Status `json:"status"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
+	Id          int    `json:"Id"`
+	Description string `json:"Description"`
+	Status      Status `json:"Status"`
+	CreatedAt   string `json:"CreatedAt"`
+	UpdatedAt   string `json:"UpdatedAt"`
 }
 
 type Status string
 
 const (
-	unknown    Status = ""
+	Unknown    Status = ""
 	Todo       Status = "todo"
 	InProgress Status = "in progress"
 	Done       Status = "done"
 )
+
+// implementing the flag.value interface methods String(),Set()
+
+func (s *Status) String() string {
+	return string(*s)
+}
+func (s *Status) Set(value string) error {
+	v := Status(strings.ToLower(value))
+	switch v {
+	case Unknown, Todo, InProgress, Done:
+		*s = v
+		return nil
+	default:
+		return fmt.Errorf("Status value must be either todo,in progress or done ")
+	}
+}
+
+// custom flag.typeVar function for my Status type
+func StatusVar(fs *flag.FlagSet, p *Status, name string, value Status, usage string) {
+	*p = value
+	fs.Var(p, name, usage)
+}
 
 // getNextId gets the next task id , if there are no tasks,the next id becomes 1.
 // it keeps updating the max id in the tasks until no more tasks
@@ -104,6 +128,11 @@ func CreateTask(description string) {
 	tasks, err := readTask()
 	if err != nil {
 		fmt.Printf("Error reading tasks : %v \n", err)
+		os.Exit(1)
+	}
+	if description == "" {
+		fmt.Printf("Error : Description is required for creating Task")
+		os.Exit(1)
 	}
 	Id := getNextId(tasks)
 	newTask := Task{
@@ -117,6 +146,7 @@ func CreateTask(description string) {
 	err = writeTask(tasks)
 	if err != nil {
 		fmt.Printf("Error saving task %v", err)
+		os.Exit(1)
 	}
 	fmt.Printf("Task created successfully (Id : %v ) \n", newTask.Id)
 }
@@ -131,28 +161,32 @@ func UpdateTask(Id int, description string, status Status) {
 		// todo
 		// show how to create tasks in print statement
 		fmt.Printf("No tasks to Update\n")
+		os.Exit(1)
 	}
 	if Id == 0 {
 		fmt.Printf("Task id needs to be provided to update task\n")
+		os.Exit(1)
 	}
-	if description == "" && status == unknown {
+	if description == "" && status == Unknown {
 		fmt.Printf("At least description or status must be provided to update task \n")
+		os.Exit(1)
 	}
-	for _, task := range tasks {
-		if task.Id == Id {
+	for i := range tasks {
+		if tasks[i].Id == Id {
 			if description != "" {
-				task.Description = description
+				tasks[i].Description = description
 			}
-			if status != unknown {
-				task.Status = status
+			if status != Unknown {
+				tasks[i].Status = status
 			}
-			task.UpdatedAt = Time()
+			tasks[i].UpdatedAt = Time()
 			break
 		}
 	}
 	err = writeTask(tasks)
 	if err != nil {
 		fmt.Printf("Failed to write task %v", err)
+		os.Exit(1)
 	}
 	fmt.Println("Task updated successfully ")
 }
@@ -162,23 +196,25 @@ func DeleteTask(Id int) {
 	tasks, err := readTask()
 	if err != nil {
 		fmt.Printf("Error reading tasks %v\n", err)
+		os.Exit(1)
 	}
 	if Id == 0 {
-		fmt.Printf("Task id needs to be provided to update task\n")
+		fmt.Printf("Error : Provide a correct task Id\n")
+		os.Exit(1)
 	}
 	for i, task := range tasks {
 		if task.Id == Id {
 			// Delete elements from index i up to i+1 excluding i+1
 			tasks = slices.Delete(tasks, i, i+1)
 			fmt.Printf("Task by Id: %d Deleted successfully \n", Id)
+			err = writeTask(tasks)
+			if err != nil {
+				fmt.Printf("Error Updating task memory base %v\n", err)
+			}
 			break
 		}
 	}
 	fmt.Printf("No tasks with task id %d \n", Id)
-	err = writeTask(tasks)
-	if err != nil {
-		fmt.Printf("Error Updating task memory base %v\n", err)
-	}
 }
 
 // ListTasks lists tasks by their status , if status is not provided it Lists all tasks
@@ -186,13 +222,19 @@ func ListTasks(status Status) []Task {
 	tasks, err := readTask()
 	if err != nil {
 		fmt.Printf("Error reading Tasks %v\n", err)
+		os.Exit(1)
 	}
 	if len(tasks) == 0 {
 		// todo
 		// show how to create tasks in print statement
 		fmt.Printf("No tasks to Update\n")
+		os.Exit(1)
 	}
-	if status == unknown {
+	if status != Unknown && status != Todo && status != InProgress && status != Done {
+		fmt.Printf("Error : Task Status must be either \"todo\",\"done\", or \"in progress\"")
+		os.Exit(1)
+	}
+	if status == Unknown {
 		return tasks
 	}
 	var taskList []Task
