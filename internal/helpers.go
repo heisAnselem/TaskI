@@ -124,15 +124,13 @@ func writeTask(task []Task) error {
 }
 
 // CreateTask creates a task with description provided
-func CreateTask(description string) {
+func CreateTask(description string) (Task, error) {
+	if strings.TrimSpace(description) == "" {
+		return Task{}, errors.New("task description is required")
+	}
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks : %v \n", err)
-		os.Exit(1)
-	}
-	if description == "" {
-		fmt.Printf("Error : Description is required for creating Task")
-		os.Exit(1)
+		return Task{}, fmt.Errorf("failed to read tasks: %w ", err)
 	}
 	Id := getNextId(tasks)
 	newTask := Task{
@@ -143,52 +141,51 @@ func CreateTask(description string) {
 		UpdatedAt:   Time(),
 	}
 	tasks = append(tasks, newTask)
-	err = writeTask(tasks)
-	if err != nil {
-		fmt.Printf("Error saving task %v", err)
-		os.Exit(1)
+	if err := writeTask(tasks); err != nil {
+		return Task{}, fmt.Errorf("Error saving task %w", err)
 	}
-	fmt.Printf("Task created successfully (Id : %v ) \n", newTask.Id)
+	return newTask, nil
 }
 
-// UpdateTask updates a tasks description or status or both by id
-func UpdateTask(Id int, description string, status Status) {
+// UpdateTask updates a tasks description or status or both by id,
+// returns the updated task and error if any encountered
+func UpdateTask(Id int, description string, status Status) (Task, error) {
+	if Id <= 0 {
+		return Task{}, errors.New("Task id needs to be provided to update task")
+	}
+	if strings.TrimSpace(description) == "" && status == Unknown {
+		return Task{}, errors.New("At least description or status must be provided to update task")
+	}
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks: %v\n", err)
+		return Task{}, fmt.Errorf("failed to read tasks: %w", err)
 	}
 	if len(tasks) == 0 {
-		// todo
-		// show how to create tasks in print statement
-		fmt.Printf("No tasks to Update\n")
-		os.Exit(1)
+		return Task{}, errors.New("No tasks available to update")
 	}
-	if Id == 0 {
-		fmt.Printf("Task id needs to be provided to update task\n")
-		os.Exit(1)
-	}
-	if description == "" && status == Unknown {
-		fmt.Printf("At least description or status must be provided to update task \n")
-		os.Exit(1)
-	}
+	taskUpdated := Task{}
+	found := false
 	for i := range tasks {
 		if tasks[i].Id == Id {
-			if description != "" {
+			found = true
+			if strings.TrimSpace(description) != "" {
 				tasks[i].Description = description
 			}
 			if status != Unknown {
 				tasks[i].Status = status
 			}
 			tasks[i].UpdatedAt = Time()
+			taskUpdated = tasks[i]
 			break
 		}
 	}
-	err = writeTask(tasks)
-	if err != nil {
-		fmt.Printf("Failed to write task %v", err)
-		os.Exit(1)
+	if !found {
+		return Task{}, errors.New("Task not found ")
 	}
-	fmt.Println("Task updated successfully ")
+	if err := writeTask(tasks); err != nil {
+		return Task{}, fmt.Errorf("Failed to write task %w", err)
+	}
+	return taskUpdated, nil
 }
 
 // DeleteTask deletes a task by its id

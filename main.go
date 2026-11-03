@@ -55,7 +55,12 @@ func main() {
 	case "create":
 		createCmd.Parse(subArgs)
 		fmt.Printf("Action : CREATE -> Task\n")
-		internal.CreateTask(task.Description)
+		createdTask, err := internal.CreateTask(task.Description)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error : %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task created successfully (ID : %d)\n", createdTask.Id)
 	case "list":
 		listCmd.Parse(subArgs)
 		if task.Status == Unknown {
