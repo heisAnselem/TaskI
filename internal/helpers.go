@@ -189,29 +189,26 @@ func UpdateTask(Id int, description string, status Status) (Task, error) {
 }
 
 // DeleteTask deletes a task by its id
-func DeleteTask(Id int) {
+func DeleteTask(Id int) error {
+	if Id <= 0 {
+		return errors.New("Task id needs to be provided to update task")
+	}
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading tasks %v\n", err)
-		os.Exit(1)
-	}
-	if Id == 0 {
-		fmt.Printf("Error : Provide a correct task Id\n")
-		os.Exit(1)
+		return fmt.Errorf("Error reading tasks :%w", err)
 	}
 	for i, task := range tasks {
 		if task.Id == Id {
 			// Delete elements from index i up to i+1 excluding i+1
 			tasks = slices.Delete(tasks, i, i+1)
-			fmt.Printf("Task by Id: %d Deleted successfully \n", Id)
 			err = writeTask(tasks)
 			if err != nil {
-				fmt.Printf("Error Updating task memory base %v\n", err)
+				return fmt.Errorf("Failed to write tasks : %w", err)
 			}
-			break
+			return nil
 		}
 	}
-	fmt.Printf("No tasks with task id %d \n", Id)
+	return fmt.Errorf("No tasks with task id %d \n", Id)
 }
 
 // ListTasks lists tasks by their status , if status is not provided it Lists all tasks

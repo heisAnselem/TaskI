@@ -73,12 +73,22 @@ func main() {
 	case "update":
 		updateCmd.Parse(subArgs)
 		fmt.Printf("Action : UPDATE Task\n")
-		internal.UpdateTask(task.Id, task.Description, task.Status)
+		updatedTask, err := internal.UpdateTask(task.Id, task.Description, task.Status)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error : %v", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task updated successfully (ID : %d)", updatedTask.Id)
 
 	case "delete":
 		deleteCmd.Parse(subArgs)
 		fmt.Printf("Action : DELETE Task\n")
-		internal.DeleteTask(task.Id)
+		err := internal.DeleteTask(task.Id)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error : %v", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Task deleted successfully (ID :%d)", task.Id)
 
 	default:
 		fmt.Printf("Unknown subcommand: %q\n\n", subcommand)
