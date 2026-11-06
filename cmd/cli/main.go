@@ -6,17 +6,18 @@ import (
 	"os"
 
 	"github.com/heisAnselem/TaskI/internal"
+	"github.com/heisAnselem/TaskI/internal/task"
 )
 
 const (
-	Unknown    = internal.Unknown
-	Todo       = internal.Todo
-	InProgress = internal.InProgress
-	Done       = internal.Done
+	Unknown    = task.Unknown
+	Todo       = task.Todo
+	InProgress = task.InProgress
+	Done       = task.Done
 )
 
-type Status = internal.Status
-type Task = internal.Task
+type Status = task.Status
+type Task = task.Task
 
 func main() {
 

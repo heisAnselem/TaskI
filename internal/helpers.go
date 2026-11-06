@@ -11,6 +11,8 @@ import (
 	"strings"
 	"text/tabwriter"
 	"time"
+
+	"github.com/heisAnselem/TaskI/internal/task"
 )
 
 // Time computes the current time based on my format
@@ -20,49 +22,15 @@ func Time() string {
 	return now.Format(layout)
 }
 
-// Task object - details regarding a task
-type Task struct {
-	Id          int    `json:"Id"`
-	Description string `json:"Description"`
-	Status      Status `json:"Status"`
-	CreatedAt   string `json:"CreatedAt"`
-	UpdatedAt   string `json:"UpdatedAt"`
-}
-
-type Status string
-
-const (
-	Unknown    Status = ""
-	Todo       Status = "todo"
-	InProgress Status = "in progress"
-	Done       Status = "done"
-)
-
-// implementing the flag.value interface methods String(),Set()
-
-func (s *Status) String() string {
-	return string(*s)
-}
-func (s *Status) Set(value string) error {
-	v := Status(strings.ToLower(value))
-	switch v {
-	case Unknown, Todo, InProgress, Done:
-		*s = v
-		return nil
-	default:
-		return fmt.Errorf("Status value must be either todo,in progress or done ")
-	}
-}
-
 // custom flag.typeVar function for my Status type
-func StatusVar(fs *flag.FlagSet, p *Status, name string, value Status, usage string) {
+func StatusVar(fs *flag.FlagSet, p *task.Status, name string, value task.Status, usage string) {
 	*p = value
 	fs.Var(p, name, usage)
 }
 
 // getNextId gets the next task id , if there are no tasks,the next id becomes 1.
 // it keeps updating the max id in the tasks until no more tasks
-func getNextId(tasks []Task) int {
+func getNextId(tasks []task.Task) int {
 	maxId := 0
 	for _, task := range tasks {
 		if task.Id > maxId {
@@ -81,7 +49,7 @@ func getFilePath(filename string) (string, error) {
 	return filepath.Join(dir, filename), nil
 }
 
-func readTask() ([]Task, error) {
+func readTask() ([]task.Task, error) {
 	path, err := getFilePath("tasks.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get file path: %w", err)
@@ -91,23 +59,23 @@ func readTask() ([]Task, error) {
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			// if file does not exist , creates empty task slice
-			return []Task{}, nil
+			return []task.Task{}, nil
 		}
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
 
 	if len(f) == 0 {
 		//file exists but no content
-		return []Task{}, nil
+		return []task.Task{}, nil
 	}
-	var task []Task
+	task := []task.Task{}
 	err = json.Unmarshal(f, &task)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 	return task, nil
 }
-func writeTask(task []Task) error {
+func writeTask(task []task.Task) error {
 	path, err := getFilePath("tasks.json")
 	if err != nil {
 		return fmt.Errorf("failed to get file path: %w", err)
@@ -124,46 +92,46 @@ func writeTask(task []Task) error {
 }
 
 // CreateTask creates a task with description provided
-func CreateTask(description string) (Task, error) {
+func CreateTask(description string) (task.Task, error) {
 	if strings.TrimSpace(description) == "" {
-		return Task{}, errors.New("task description is required")
+		return task.Task{}, errors.New("task description is required")
 	}
 	tasks, err := readTask()
 	if err != nil {
-		return Task{}, fmt.Errorf("failed to read tasks: %w ", err)
+		return task.Task{}, fmt.Errorf("failed to read tasks: %w ", err)
 	}
 	Id := getNextId(tasks)
-	newTask := Task{
+	newTask := task.Task{
 		Id:          Id,
 		Description: description,
-		Status:      Todo,
+		Status:      task.Todo,
 		CreatedAt:   Time(),
 		UpdatedAt:   Time(),
 	}
 	tasks = append(tasks, newTask)
 	if err := writeTask(tasks); err != nil {
-		return Task{}, fmt.Errorf("Error saving task %w", err)
+		return task.Task{}, fmt.Errorf("Error saving task %w", err)
 	}
 	return newTask, nil
 }
 
 // UpdateTask updates a tasks description or status or both by id,
 // returns the updated task and error if any encountered
-func UpdateTask(Id int, description string, status Status) (Task, error) {
+func UpdateTask(Id int, description string, status task.Status) (task.Task, error) {
 	if Id <= 0 {
-		return Task{}, errors.New("Task id needs to be provided to update task")
+		return task.Task{}, errors.New("Task id needs to be provided to update task")
 	}
-	if strings.TrimSpace(description) == "" && status == Unknown {
-		return Task{}, errors.New("At least description or status must be provided to update task")
+	if strings.TrimSpace(description) == "" && status == task.Unknown {
+		return task.Task{}, errors.New("At least description or status must be provided to update task")
 	}
 	tasks, err := readTask()
 	if err != nil {
-		return Task{}, fmt.Errorf("failed to read tasks: %w", err)
+		return task.Task{}, fmt.Errorf("failed to read tasks: %w", err)
 	}
 	if len(tasks) == 0 {
-		return Task{}, errors.New("No tasks available to update")
+		return task.Task{}, errors.New("No tasks available to update")
 	}
-	taskUpdated := Task{}
+	taskUpdated := task.Task{}
 	found := false
 	for i := range tasks {
 		if tasks[i].Id == Id {
@@ -171,7 +139,7 @@ func UpdateTask(Id int, description string, status Status) (Task, error) {
 			if strings.TrimSpace(description) != "" {
 				tasks[i].Description = description
 			}
-			if status != Unknown {
+			if status != task.Unknown {
 				tasks[i].Status = status
 			}
 			tasks[i].UpdatedAt = Time()
@@ -180,10 +148,10 @@ func UpdateTask(Id int, description string, status Status) (Task, error) {
 		}
 	}
 	if !found {
-		return Task{}, errors.New("Task not found ")
+		return task.Task{}, errors.New("Task not found ")
 	}
 	if err := writeTask(tasks); err != nil {
-		return Task{}, fmt.Errorf("failed to write task %w", err)
+		return task.Task{}, fmt.Errorf("failed to write task %w", err)
 	}
 	return taskUpdated, nil
 }
@@ -212,18 +180,18 @@ func DeleteTask(Id int) error {
 }
 
 // ListTasks lists tasks by their status , if status is not provided it Lists all tasks
-func ListTasks(status Status) ([]Task, error) {
-	if status != Unknown && status != Todo && status != InProgress && status != Done {
-		return []Task{}, fmt.Errorf("task Status must be either \"todo\",\"done\", or \"in progress\"")
+func ListTasks(status task.Status) ([]task.Task, error) {
+	if status != task.Unknown && status != task.Todo && status != task.InProgress && status != task.Done {
+		return []task.Task{}, fmt.Errorf("task Status must be either \"todo\",\"done\", or \"in progress\"")
 	}
 	tasks, err := readTask()
 	if err != nil {
-		return []Task{}, fmt.Errorf("failed to read tasks %w", err)
+		return []task.Task{}, fmt.Errorf("failed to read tasks %w", err)
 	}
-	if len(tasks) == 0 || status == Unknown {
+	if len(tasks) == 0 || status == task.Unknown {
 		return tasks, nil
 	}
-	taskList := []Task{}
+	taskList := []task.Task{}
 	for _, task := range tasks {
 		if task.Status == status {
 			taskList = append(taskList, task)
@@ -233,7 +201,7 @@ func ListTasks(status Status) ([]Task, error) {
 }
 
 // FormatTask formats the tasks listed in a slice and prints to the terminal
-func FormatTask(tasks []Task) {
+func FormatTask(tasks []task.Task) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
 
 	fmt.Fprintln(w, "      TASK         ")
