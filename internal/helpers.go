@@ -183,7 +183,7 @@ func UpdateTask(Id int, description string, status Status) (Task, error) {
 		return Task{}, errors.New("Task not found ")
 	}
 	if err := writeTask(tasks); err != nil {
-		return Task{}, fmt.Errorf("Failed to write task %w", err)
+		return Task{}, fmt.Errorf("failed to write task %w", err)
 	}
 	return taskUpdated, nil
 }
@@ -191,11 +191,11 @@ func UpdateTask(Id int, description string, status Status) (Task, error) {
 // DeleteTask deletes a task by its id
 func DeleteTask(Id int) error {
 	if Id <= 0 {
-		return errors.New("Task id needs to be provided to update task")
+		return errors.New("task Id must be a positive integer")
 	}
 	tasks, err := readTask()
 	if err != nil {
-		return fmt.Errorf("Error reading tasks :%w", err)
+		return fmt.Errorf("failed to read tasks :%w", err)
 	}
 	for i, task := range tasks {
 		if task.Id == Id {
@@ -208,36 +208,28 @@ func DeleteTask(Id int) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("No tasks with task id %d \n", Id)
+	return fmt.Errorf("tasks with Id %d not found", Id)
 }
 
 // ListTasks lists tasks by their status , if status is not provided it Lists all tasks
-func ListTasks(status Status) []Task {
+func ListTasks(status Status) ([]Task, error) {
+	if status != Unknown && status != Todo && status != InProgress && status != Done {
+		return []Task{}, fmt.Errorf("task Status must be either \"todo\",\"done\", or \"in progress\"")
+	}
 	tasks, err := readTask()
 	if err != nil {
-		fmt.Printf("Error reading Tasks %v\n", err)
-		os.Exit(1)
+		return []Task{}, fmt.Errorf("failed to read tasks %w", err)
 	}
-	if len(tasks) == 0 {
-		// todo
-		// show how to create tasks in print statement
-		fmt.Printf("No tasks to Update\n")
-		os.Exit(1)
+	if len(tasks) == 0 || status == Unknown {
+		return tasks, nil
 	}
-	if status != Unknown && status != Todo && status != InProgress && status != Done {
-		fmt.Printf("Error : Task Status must be either \"todo\",\"done\", or \"in progress\"")
-		os.Exit(1)
-	}
-	if status == Unknown {
-		return tasks
-	}
-	var taskList []Task
+	taskList := []Task{}
 	for _, task := range tasks {
 		if task.Status == status {
 			taskList = append(taskList, task)
 		}
 	}
-	return taskList
+	return taskList, nil
 }
 
 // FormatTask formats the tasks listed in a slice and prints to the terminal

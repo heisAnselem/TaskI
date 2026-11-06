@@ -68,7 +68,11 @@ func main() {
 		} else {
 			fmt.Printf("Action : LIST -> All Tasks by Status \n")
 		}
-		tasks := internal.ListTasks(task.Status)
+		tasks, err := internal.ListTasks(task.Status)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error : %v", err)
+			os.Exit(1)
+		}
 		internal.FormatTask(tasks)
 	case "update":
 		updateCmd.Parse(subArgs)
